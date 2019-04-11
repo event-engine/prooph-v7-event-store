@@ -47,7 +47,7 @@ $projectionManager = new \EventEngine\Prooph\V7\EventStore\Projecting\InMemory\I
 $query = $projectionManager->createQuery();
 
 $query->fromStream('event_stream')
-    ->whenAny(function (\Prooph\Common\Messaging\DomainEvent $event) {
+    ->whenAny(function (array $state, \Prooph\Common\Messaging\DomainEvent $event) {
         echo "{$event->messageName()} stored in event_stream\n";
     });
 
