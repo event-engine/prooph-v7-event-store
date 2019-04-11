@@ -222,11 +222,22 @@ final class FilesystemEventStore implements TransactionalEventStore, EventStoreD
 
     private function writeToFile(): void
     {
-        $data = [
-            'events' => $this->transactionalConnection['events'],
-            'event_streams' => $this->transactionalConnection['event_streams'],
-            'projections' => $this->transactionalConnection['projections'],
-        ];
+        if($this->transactionalConnection->inTransaction()) {
+            $ref = new \ReflectionClass($this->transactionalConnection);
+            $snapshotProp = $ref->getProperty('snapshot');
+            $snapshot = $snapshotProp->getValue($this->transactionalConnection);
+            $data = [
+                'events' => $snapshot['events'],
+                'event_streams' => $snapshot['event_streams'],
+                'projections' => $snapshot['projections'],
+            ];
+        } else {
+            $data = [
+                'events' => $this->transactionalConnection['events'],
+                'event_streams' => $this->transactionalConnection['event_streams'],
+                'projections' => $this->transactionalConnection['projections'],
+            ];
+        }
 
         $json = \json_encode($data, $this->jsonEncodeOptions);
 
