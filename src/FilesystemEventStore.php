@@ -57,6 +57,8 @@ final class FilesystemEventStore implements TransactionalEventStore, EventStoreD
         $this->transactionalConnection['projections'] = $data['projections'] ?? [];
 
         $this->inMemoryStore = new InMemoryEventStore($this->transactionalConnection);
+        $this->filename = $filename;
+        $this->jsonEncodeOptions = $jsonEncodeOptions;
     }
 
     public function create(Stream $stream): void
