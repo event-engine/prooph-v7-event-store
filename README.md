@@ -22,10 +22,12 @@ A prooph v7 compatible `FilesystemEventStore` is included, too. It is meant to b
 
 ```php
 
-//Set up
+//Basic set up that's able to handle Prooph\Common\Messaging\DomainEvent
 $filesystemEventStore = new \EventEngine\Prooph\V7\EventStore\FilesystemEventStore(
     'data/prooph.event_store.json', 
     \JSON_PRETTY_PRINT
+    // optional MessageFactory -> defaults to FQCNMessageFactory
+    // optional MessageConverter -> defaults to NoOpMessageConverter
 );
 
 //Create an empty stream
@@ -36,20 +38,25 @@ $filesystemEventStore->create(
     )
 );
 
-//Can also be used together with prooph's InMemoryProjectionManager
-$projectionManager = new \Prooph\EventStore\Projection\InMemoryProjectionManager(
-    $filesystemEventStore
+//Can also be used together with an InMemoryProjectionManager
+$projectionManager = new \EventEngine\Prooph\V7\EventStore\Projecting\InMemory\InMemoryProjectionManager(
+    $filesystemEventStore,
+    new \EventEngine\Persistence\InMemoryConnection()
 );
 
 $query = $projectionManager->createQuery();
 
 $query->fromStream('event_stream')
-    ->whenAny(function (\Prooph\Common\Messaging\Message $event) {
+    ->whenAny(function (\Prooph\Common\Messaging\DomainEvent $event) {
         echo "{$event->messageName()} stored in event_stream\n";
     });
 
 $query->run();
 ```
+
+*Please Note: The combination of FilesystemEventStore and InMemoryProjectionManager has the drawback that projections only see events that are in the event store
+at the time of running the projection. If other PHP processes add events to the store, those are first visible for the projection after restarting the PHP process and
+running the projection again. We might add a FilesystemProjectionManager in the future, if needed.* 
 
 
 
