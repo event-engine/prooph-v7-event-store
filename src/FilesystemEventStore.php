@@ -5,7 +5,6 @@ namespace EventEngine\Prooph\V7\EventStore;
 
 use DateTimeImmutable;
 use DateTimeZone;
-use Doctrine\Common\Annotations\Annotation\Required;
 use EventEngine\Persistence\InMemoryConnection;
 use EventEngine\Persistence\TransactionalConnection;
 use EventEngine\Prooph\V7\EventStore\Exception\FailedToWriteFile;
@@ -20,7 +19,6 @@ use Prooph\EventStore\Metadata\MetadataMatcher;
 use Prooph\EventStore\Stream;
 use Prooph\EventStore\StreamName;
 use Prooph\EventStore\TransactionalEventStore;
-use Prooph\EventStore\InMemoryEventStore as ProophInMemoryEventStore;
 
 final class FilesystemEventStore implements TransactionalEventStore, EventStoreDecorator
 {
@@ -249,23 +247,7 @@ final class FilesystemEventStore implements TransactionalEventStore, EventStoreD
      */
     public function getInnerEventStore(): EventStore
     {
-        $streams = $this->transactionalConnection['event_streams'] ?? [];
-
-        $eventsPerStream = $this->transactionalConnection['events'] ?? [];
-
-        foreach ($eventsPerStream as $streamName => $events) {
-            $streams[$streamName] = $events;
-        }
-
-        $proophStore = new ProophInMemoryEventStore();
-
-        $ref = new \ReflectionClass($proophStore);
-
-        $refEventsProp = $ref->getProperty('streams');
-        $refEventsProp->setAccessible(true);
-        $refEventsProp->setValue($proophStore, $streams);
-
-        return $proophStore;
+        return $this->inMemoryStore;
     }
 
     private function writeToFile(): void
