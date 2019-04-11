@@ -3,11 +3,17 @@ declare(strict_types=1);
 
 namespace EventEngine\Prooph\V7\EventStore;
 
+use DateTimeImmutable;
+use DateTimeZone;
 use Doctrine\Common\Annotations\Annotation\Required;
 use EventEngine\Persistence\InMemoryConnection;
 use EventEngine\Persistence\TransactionalConnection;
 use EventEngine\Prooph\V7\EventStore\Exception\FailedToWriteFile;
 use Iterator;
+use Prooph\Common\Messaging\FQCNMessageFactory;
+use Prooph\Common\Messaging\MessageConverter;
+use Prooph\Common\Messaging\MessageFactory;
+use Prooph\Common\Messaging\NoOpMessageConverter;
 use Prooph\EventStore\EventStore;
 use Prooph\EventStore\EventStoreDecorator;
 use Prooph\EventStore\Metadata\MetadataMatcher;
@@ -29,6 +35,16 @@ final class FilesystemEventStore implements TransactionalEventStore, EventStoreD
     private $transactionalConnection;
 
     /**
+     * @var MessageFactory
+     */
+    private $messageFactory;
+
+    /**
+     * @var MessageConverter
+     */
+    private $messageConverter;
+
+    /**
      * @var string
      */
     private $filename;
@@ -38,7 +54,12 @@ final class FilesystemEventStore implements TransactionalEventStore, EventStoreD
      */
     private $jsonEncodeOptions;
 
-    public function __construct(string $filename, int $jsonEncodeOptions = 0)
+    public function __construct(
+        string $filename,
+        int $jsonEncodeOptions = 0,
+        MessageFactory $messageFactory = null,
+        MessageConverter $messageConverter = null
+    )
     {
         $data = [];
 
@@ -50,15 +71,42 @@ final class FilesystemEventStore implements TransactionalEventStore, EventStoreD
             $data = \json_decode(\file_get_contents($filename), true);
         }
 
+        if(null === $messageFactory) {
+            $messageFactory = new FQCNMessageFactory();
+        }
+
+        if(null === $messageConverter) {
+            $messageConverter = new NoOpMessageConverter();
+        }
+
+        $this->messageFactory = $messageFactory;
+        $this->messageConverter = $messageConverter;
+
         $this->transactionalConnection = new InMemoryConnection();
 
-        $this->transactionalConnection['events'] = $data['events'] ?? [];
+        $events = $data['events'] ?? [];
+
+        foreach ($events as $streamName => $streamEvents) {
+            $proophEvents = [];
+            foreach ($streamEvents as $event) {
+                $event['created_at'] = DateTimeImmutable::createFromFormat(
+                    'Y-m-d H:i:s.u',
+                    $event['created_at'],
+                    new DateTimeZone('UTC')
+                );
+                $proophEvents[] = $this->messageFactory->createMessageFromArray($event['message_name'], $event);
+            }
+            $events[$streamName] = $proophEvents;
+        }
+
+        $this->transactionalConnection['events'] = $events;
         $this->transactionalConnection['event_streams'] = $data['event_streams'] ?? [];
         $this->transactionalConnection['projections'] = $data['projections'] ?? [];
 
         $this->inMemoryStore = new InMemoryEventStore($this->transactionalConnection);
         $this->filename = $filename;
         $this->jsonEncodeOptions = $jsonEncodeOptions;
+
     }
 
     public function create(Stream $stream): void
@@ -222,21 +270,21 @@ final class FilesystemEventStore implements TransactionalEventStore, EventStoreD
 
     private function writeToFile(): void
     {
-        if($this->transactionalConnection->inTransaction()) {
-            $ref = new \ReflectionClass($this->transactionalConnection);
-            $snapshotProp = $ref->getProperty('snapshot');
-            $snapshot = $snapshotProp->getValue($this->transactionalConnection);
-            $data = [
-                'events' => $snapshot['events'],
-                'event_streams' => $snapshot['event_streams'],
-                'projections' => $snapshot['projections'],
-            ];
-        } else {
-            $data = [
-                'events' => $this->transactionalConnection['events'],
-                'event_streams' => $this->transactionalConnection['event_streams'],
-                'projections' => $this->transactionalConnection['projections'],
-            ];
+        $data = [
+            'events' => $this->transactionalConnection['events'],
+            'event_streams' => $this->transactionalConnection['event_streams'],
+            'projections' => $this->transactionalConnection['projections'],
+        ];
+
+        foreach ($data['events'] as $streamName => $events) {
+            $arrEvents = [];
+            foreach ($events as $event) {
+                $arrEvent = $this->messageConverter->convertToArray($event);
+                $arrEvent['created_at'] = $arrEvent['created_at']->format('Y-m-d H:i:s.u');
+                $arrEvents[] = $arrEvent;
+            }
+
+            $data['events'][$streamName] = $arrEvents;
         }
 
         $json = \json_encode($data, $this->jsonEncodeOptions);
