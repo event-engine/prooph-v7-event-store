@@ -100,9 +100,10 @@ final class ProophEventStore implements EventStore
      * @param string $aggregateType
      * @param string $aggregateId
      * @param int $minVersion
+     * @param int|null $maxVersion
      * @return \Iterator GenericEvent[]
      */
-    public function loadAggregateEvents(string $streamName, string $aggregateType, string $aggregateId, int $minVersion = 1): \Iterator
+    public function loadAggregateEvents(string $streamName, string $aggregateType, string $aggregateId, int $minVersion = 1, int $maxVersion = null): \Iterator
     {
         $matcher = new MetadataMatcher();
 
@@ -111,6 +112,10 @@ final class ProophEventStore implements EventStore
 
         if($minVersion > 1) {
             $matcher = $matcher->withMetadataMatch(GenericEvent::META_AGGREGATE_VERSION, Operator::GREATER_THAN_EQUALS(), $minVersion);
+        }
+
+        if($maxVersion !== null) {
+            $matcher = $matcher->withMetadataMatch(GenericEvent::META_AGGREGATE_VERSION, Operator::LOWER_THAN_EQUALS(), $maxVersion);
         }
 
         return $this->prepareEventMapping(
