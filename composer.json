@@ -17,7 +17,7 @@
   ],
   "require": {
     "php": "^7.2 || ^8.0",
-    "event-engine/php-engine-utils": "^0.2.1",
+    "event-engine/php-engine-utils": "^0.2.1 || ^1.0",
     "event-engine/php-messaging": "^0.2.1",
     "event-engine/php-persistence": "^0.9.1",
     "prooph/event-store": "^7.0"
