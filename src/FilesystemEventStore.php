@@ -55,8 +55,8 @@ final class FilesystemEventStore implements TransactionalEventStore, EventStoreD
     public function __construct(
         string $filename,
         int $jsonEncodeOptions = 0,
-        MessageFactory $messageFactory = null,
-        MessageConverter $messageConverter = null
+        ?MessageFactory $messageFactory = null,
+        ?MessageConverter $messageConverter = null
     )
     {
         $data = [];
@@ -161,12 +161,12 @@ final class FilesystemEventStore implements TransactionalEventStore, EventStoreD
         return $this->inMemoryStore->hasStream($streamName);
     }
 
-    public function load(StreamName $streamName, int $fromNumber = 1, int $count = null, MetadataMatcher $metadataMatcher = null): Iterator
+    public function load(StreamName $streamName, int $fromNumber = 1, ?int $count = null, ?MetadataMatcher $metadataMatcher = null): Iterator
     {
         return $this->inMemoryStore->load($streamName, $fromNumber, $count, $metadataMatcher);
     }
 
-    public function loadReverse(StreamName $streamName, int $fromNumber = null, int $count = null, MetadataMatcher $metadataMatcher = null): Iterator
+    public function loadReverse(StreamName $streamName, ?int $fromNumber = null, ?int $count = null, ?MetadataMatcher $metadataMatcher = null): Iterator
     {
         return $this->inMemoryStore->loadReverse($streamName, $fromNumber, $count, $metadataMatcher);
     }
