@@ -103,7 +103,7 @@ final class ProophEventStore implements EventStore
      * @param int|null $maxVersion
      * @return \Iterator GenericEvent[]
      */
-    public function loadAggregateEvents(string $streamName, string $aggregateType, string $aggregateId, int $minVersion = 1, int $maxVersion = null): \Iterator
+    public function loadAggregateEvents(string $streamName, string $aggregateType, string $aggregateId, int $minVersion = 1, ?int $maxVersion = null): \Iterator
     {
         $matcher = new MetadataMatcher();
 
